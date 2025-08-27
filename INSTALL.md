@@ -41,7 +41,7 @@ Configure your email service (Gmail, SendGrid, etc.):
    - Select the downloaded JSON file
    - Click **Import**
 
-### Method 2: Copy from n8n Template (if available)
+### Method 2: Copy from n8n Template (coming soon)
 1. In n8n, go to **Templates**
 2. Search for "SEO Indexability Review"
 3. Click **Use this workflow**
