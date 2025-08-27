@@ -25,8 +25,8 @@ This guide will help you set up the SEO Indexability Review workflow in your n8n
 
 ### SMTP Credentials
 Configure your email service (Gmail, Outlook, etc.):
-- **Gmail**: Enable 2FA and create an App Password
-- **SendGrid**: Create an API key
+- **Gmail**: Enable 2FA and create an App Password (Note: App Password is different from your main login password)
+- **Outlook**: Create an API key
 - **Other SMTP**: Get host, port, username, password
 
 ## Step 2: Import the Workflow
@@ -71,24 +71,20 @@ Configure your email service (Gmail, Outlook, etc.):
    - **Port**: 465 (for Gmail - May be different depending on email provider)
    - **Username**: Your email address
    - **Password**: Your app password (you will need to setup an app password in Google Console for Gmail)
-   - **Security**: STARTTLS
+   - **Security**: SSL/TLS Toggle On
+   - **Client Host Name**: Leave Blank
 4. Save as "Email SMTP"
 
 ## Step 4: Update Workflow Configuration
 
 ### 1. Configure Target Website
 In the **"Init Site"** node:
-```javascript
-{
-  "site": "https://your-website.com"
-}
-```
+- **site** String: Insert URL of Website to be Reviewed
 
 ### 2. Update Email Settings
 In the **"Send email"** node:
 - **From Email**: your-email@domain.com
 - **To Email**: recipient@domain.com
-- **Subject**: Customize as needed
 
 ### 3. Assign Credentials
 Ensure each node has the correct credentials:
@@ -167,6 +163,8 @@ Analyze multiple websites:
 
 If you encounter issues:
 
+**Email Workflow Creator**: dave@deepthinklabs.ai - Please feel free to email me if you are running into issues. I am happy to help trouble shoot. 
+
 1. **Check the Logs**: Review n8n execution logs for detailed errors
 2. **Test Components**: Test individual nodes to isolate issues
 3. **API Documentation**: Refer to Firecrawl and Anthropic API docs
@@ -182,4 +180,4 @@ Once installed:
 4. Set up scheduled execution for regular audits
 5. Integrate with your existing SEO workflow
 
-Happy analyzing! 🚀
+Hope this is helpful! 🚀
