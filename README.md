@@ -4,7 +4,17 @@
 
 This n8n workflow provides comprehensive SEO indexability analysis for websites. It automatically crawls sitemaps, analyzes page indexability factors, and generates detailed audit reports with AI-powered recommendations.
 
-## 🚀 Features
+## Quick Start
+
+**Download Complete Workflow**: [SEO Indexability Review - Complete JSON](https://gist.githubusercontent.com/deepthinklabs-ai/959f79aa4b37623070753d0cc6126b7f/raw/seo-indexability-review-complete.json)
+
+1. Right-click and save the JSON file
+2. Import into n8n via Workflows → Import from File
+3. Configure credentials (see [INSTALL.md](INSTALL.md))
+4. Update website URL and email settings
+5. Execute workflow
+
+## Features
 
 - **Automated Sitemap Crawling**: Fetches and parses XML sitemaps
 - **Comprehensive Page Analysis**: Checks HTTP status, content-type, robots tags, canonicals, and more
@@ -13,7 +23,7 @@ This n8n workflow provides comprehensive SEO indexability analysis for websites.
 - **Detailed Reporting**: Generates prioritized recommendations with P0/P1/P2 classification
 - **Email Notifications**: Sends formatted HTML reports via email
 
-## 📋 What It Analyzes
+## What It Analyzes
 
 ### Core Indexability Factors
 - HTTP status codes and redirects
@@ -36,7 +46,7 @@ This n8n workflow provides comprehensive SEO indexability analysis for websites.
 - **Canonical Conflicts**: Detects multiple or conflicting canonical URLs
 - **Actionable Recommendations**: Specific steps to resolve issues
 
-## 🛠️ Setup Requirements
+## Setup Requirements
 
 ### n8n Nodes Required
 - **HTTP Request** - For fetching pages and sitemaps
@@ -47,6 +57,8 @@ This n8n workflow provides comprehensive SEO indexability analysis for websites.
 - **Set** - For data manipulation
 - **Merge** - For combining data streams
 - **Email Send** - For report delivery
+- **LangChain Agent** - For AI analysis
+- **Anthropic Chat Model** - For Claude AI integration
 
 ### External Services
 1. **Firecrawl API** - For JavaScript rendering and metadata extraction
@@ -58,30 +70,20 @@ This n8n workflow provides comprehensive SEO indexability analysis for websites.
 - Anthropic API key  
 - SMTP credentials for email sending
 
-## 📦 Installation
+## Installation
 
-1. **Import the Workflow**
-   ```bash
-   # Download the workflow JSON
-   curl -O https://raw.githubusercontent.com/deepthinklabs-ai/seo-indexability-review-n8n/main/workflow.json
-   ```
+See [INSTALL.md](INSTALL.md) for detailed setup instructions.
 
-2. **Import in n8n**
-   - Open your n8n instance
-   - Go to Workflows → Import from File
-   - Select the downloaded `workflow.json`
+## Security Review
 
-3. **Configure Credentials**
-   - Set up Firecrawl API credentials
-   - Configure Anthropic API access
-   - Add SMTP email credentials
+**The workflow is safe to share publicly:**
+- No API keys or tokens are exposed
+- Email addresses are templated as placeholders
+- Website URLs use placeholder values
+- Credential references use IDs, not actual keys
+- All sensitive data must be configured after import
 
-4. **Update Configuration**
-   - Modify the `Init Site` node with your target website
-   - Update email addresses in the `Send email` node
-   - Adjust rate limiting in `Wait` nodes if needed
-
-## 🎯 Usage
+## Usage
 
 ### Basic Execution
 1. Open the workflow in n8n
@@ -116,7 +118,7 @@ The Claude AI agent uses a detailed system prompt that can be modified for:
 - Industry-specific SEO rules
 - Additional technical factors
 
-## 📊 Output Format
+## Output Format
 
 ### Email Report Includes
 - **Page URL**: The analyzed URL
@@ -149,38 +151,14 @@ The Claude AI agent uses a detailed system prompt that can be modified for:
 }
 ```
 
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**Sitemap Not Found**
-- Verify the website has a sitemap.xml
-- Check robots.txt for sitemap location
-- Ensure the sitemap is accessible
-
-**Rate Limiting**
-- Increase wait times between requests
-- Implement exponential backoff
-- Use smaller batch sizes
-
-**Firecrawl API Errors**
-- Verify API key is valid
-- Check rate limits and usage
-- Ensure target pages are accessible
-
-**Claude AI Analysis Failures**
-- Verify Anthropic API credentials
-- Check input data format
-- Review system prompt compatibility
-
-## 📈 Performance Considerations
+## Performance Considerations
 
 - **Batch Processing**: URLs are processed in batches to manage load
 - **Rate Limiting**: Built-in delays prevent overwhelming target servers
 - **Error Handling**: Continues processing even if individual URLs fail
 - **Dual Strategy**: Falls back from HEAD to GET requests when needed
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Areas for improvement:
 - Additional SEO factors
@@ -189,18 +167,18 @@ Contributions are welcome! Areas for improvement:
 - Integration with SEO tools
 - Performance optimizations
 
-## 📝 License
+## License
 
 This project is open source and available under the MIT License.
 
-## 🔗 Related Links
+## Related Links
 
 - [n8n Documentation](https://docs.n8n.io/)
 - [Firecrawl API](https://firecrawl.dev/)
 - [Anthropic Claude](https://www.anthropic.com/)
 - [Google Search Essentials](https://developers.google.com/search/docs/essentials)
 
-## 📧 Support
+## Support
 
 For questions or issues:
 - Open a GitHub issue
