@@ -1,8 +1,8 @@
 # SEO Indexability Review - n8n Workflow
 
-> **Automated SEO indexability review workflow using n8n, Firecrawl, and Claude AI**
+> **Automated SEO indexability review workflow using n8n, Firecrawl, Claude AI, and SMTP**
 
-This n8n workflow provides comprehensive SEO indexability analysis for websites. It automatically crawls sitemaps, analyzes page indexability factors, and generates detailed audit reports with AI-powered recommendations.
+This n8n workflow provides comprehensive SEO indexability analysis for websites. It automatically crawls sitemaps, analyzes page indexability factors, and generates and emails detailed audit reports with AI-powered recommendations.
 
 ## Quick Start
 
@@ -18,10 +18,10 @@ This n8n workflow provides comprehensive SEO indexability analysis for websites.
 
 - **Automated Sitemap Crawling**: Fetches and parses XML sitemaps
 - **Comprehensive Page Analysis**: Checks HTTP status, content-type, robots tags, canonicals, and more
-- **AI-Powered SEO Audit**: Uses Claude AI to analyze indexability factors and provide recommendations
+- **AI-Powered SEO Audit**: Uses Claude AI to analyze indexability factors and provide recommendations with up to date standards
 - **Dual Crawling Strategy**: Raw HTTP requests + JavaScript rendering via Firecrawl
 - **Detailed Reporting**: Generates prioritized recommendations with P0/P1/P2 classification
-- **Email Notifications**: Sends formatted HTML reports via email
+- **Email Notifications**: Sends a formatted HTML report via email for each page analyzed
 
 ## What It Analyzes
 
@@ -57,8 +57,8 @@ This n8n workflow provides comprehensive SEO indexability analysis for websites.
 - **Set** - For data manipulation
 - **Merge** - For combining data streams
 - **Email Send** - For report delivery
-- **LangChain Agent** - For AI analysis
-- **Anthropic Chat Model** - For Claude AI integration
+- **AI Agent** - For analysing raw JSON results and identifying areas to improve
+- **Anthropic Chat Model** - For compiling the HTML report to be emailed
 
 ### External Services
 1. **Firecrawl API** - For JavaScript rendering and metadata extraction
