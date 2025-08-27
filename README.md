@@ -2,7 +2,7 @@
 
 > **Automated SEO indexability review workflow using n8n, Firecrawl, Claude AI, and SMTP**
 
-This n8n workflow provides comprehensive SEO indexability analysis for websites. It automatically crawls sitemaps, analyzes page indexability factors, and generates and emails detailed audit reports with AI-powered recommendations.
+This n8n workflow provides comprehensive SEO indexability analysis for websites. It automatically crawls sitemaps, analyzes page indexability factors, and emails detailed audit reports with recommendations.
 
 ## Quick Start
 
