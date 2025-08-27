@@ -1,2 +1,212 @@
-# seo-indexability-review-n8n
-Automated SEO indexability review workflow using n8n, Firecrawl, and Claude AI. Analyzes websites for indexability issues, crawls sitemaps, checks robots meta tags, canonicals, and generates detailed SEO audit reports.
+# SEO Indexability Review - n8n Workflow
+
+> **Automated SEO indexability review workflow using n8n, Firecrawl, and Claude AI**
+
+This n8n workflow provides comprehensive SEO indexability analysis for websites. It automatically crawls sitemaps, analyzes page indexability factors, and generates detailed audit reports with AI-powered recommendations.
+
+## 🚀 Features
+
+- **Automated Sitemap Crawling**: Fetches and parses XML sitemaps
+- **Comprehensive Page Analysis**: Checks HTTP status, content-type, robots tags, canonicals, and more
+- **AI-Powered SEO Audit**: Uses Claude AI to analyze indexability factors and provide recommendations
+- **Dual Crawling Strategy**: Raw HTTP requests + JavaScript rendering via Firecrawl
+- **Detailed Reporting**: Generates prioritized recommendations with P0/P1/P2 classification
+- **Email Notifications**: Sends formatted HTML reports via email
+
+## 📋 What It Analyzes
+
+### Core Indexability Factors
+- HTTP status codes and redirects
+- Content-Type validation (HTML detection)
+- Robots meta tags and X-Robots-Tag headers
+- Canonical URL implementation
+- Page type classification (login, cart, search pages, etc.)
+
+### Technical SEO Elements
+- Cache control headers
+- Security headers (HSTS, CSP, X-Frame-Options)
+- Content encoding and compression
+- Server response characteristics
+- Redirect chains and location headers
+
+### AI Analysis Includes
+- **Scoring System**: 0-100 indexability score
+- **Priority Classification**: P0 (Critical), P1 (High), P2 (Medium/Low) fixes
+- **Page Type Detection**: Identifies problematic page types
+- **Canonical Conflicts**: Detects multiple or conflicting canonical URLs
+- **Actionable Recommendations**: Specific steps to resolve issues
+
+## 🛠️ Setup Requirements
+
+### n8n Nodes Required
+- **HTTP Request** - For fetching pages and sitemaps
+- **Code** - For parsing XML and data transformation
+- **Split in Batches** - For processing multiple URLs
+- **Wait** - For rate limiting
+- **If/Switch** - For conditional logic
+- **Set** - For data manipulation
+- **Merge** - For combining data streams
+- **Email Send** - For report delivery
+
+### External Services
+1. **Firecrawl API** - For JavaScript rendering and metadata extraction
+2. **Anthropic API** - For AI-powered SEO analysis
+3. **SMTP Server** - For email notifications
+
+### Credentials Needed
+- Firecrawl API key
+- Anthropic API key  
+- SMTP credentials for email sending
+
+## 📦 Installation
+
+1. **Import the Workflow**
+   ```bash
+   # Download the workflow JSON
+   curl -O https://raw.githubusercontent.com/deepthinklabs-ai/seo-indexability-review-n8n/main/workflow.json
+   ```
+
+2. **Import in n8n**
+   - Open your n8n instance
+   - Go to Workflows → Import from File
+   - Select the downloaded `workflow.json`
+
+3. **Configure Credentials**
+   - Set up Firecrawl API credentials
+   - Configure Anthropic API access
+   - Add SMTP email credentials
+
+4. **Update Configuration**
+   - Modify the `Init Site` node with your target website
+   - Update email addresses in the `Send email` node
+   - Adjust rate limiting in `Wait` nodes if needed
+
+## 🎯 Usage
+
+### Basic Execution
+1. Open the workflow in n8n
+2. Update the target website URL in the "Init Site" node
+3. Click "Execute workflow" to start the analysis
+4. The workflow will automatically:
+   - Fetch the sitemap
+   - Analyze each URL for indexability
+   - Generate AI-powered recommendations
+   - Send a detailed report via email
+
+### Customization Options
+
+#### Target Different Websites
+```javascript
+// In the "Init Site" node, modify:
+{
+  "site": "https://your-website.com"
+}
+```
+
+#### Adjust Analysis Scope
+The workflow processes all URLs found in the sitemap. To limit scope:
+- Modify the sitemap parsing logic
+- Add URL filtering in the expansion phase
+- Implement batch size limits
+
+#### Customize AI Analysis
+The Claude AI agent uses a detailed system prompt that can be modified for:
+- Different scoring criteria
+- Custom page type detection
+- Industry-specific SEO rules
+- Additional technical factors
+
+## 📊 Output Format
+
+### Email Report Includes
+- **Page URL**: The analyzed URL
+- **Indexability Score**: 0-100 rating
+- **Verdict**: indexable/non-indexable/conditionally-indexable
+- **Key Findings**: Categorized by severity (high/medium/low)
+- **Priority Fixes**: Actionable recommendations with P0/P1/P2 classification
+- **Technical Details**: HTTP status, content-type, security headers
+
+### Sample Analysis Output
+```json
+{
+  "page_url": "https://example.com/page",
+  "score": 85,
+  "verdict": "indexable",
+  "page_type": "standard",
+  "findings": [
+    {
+      "severity": "medium",
+      "detail": "Missing canonical URL"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "P1",
+      "action": "Add canonical URL",
+      "rationale": "Prevents duplicate content issues"
+    }
+  ]
+}
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Sitemap Not Found**
+- Verify the website has a sitemap.xml
+- Check robots.txt for sitemap location
+- Ensure the sitemap is accessible
+
+**Rate Limiting**
+- Increase wait times between requests
+- Implement exponential backoff
+- Use smaller batch sizes
+
+**Firecrawl API Errors**
+- Verify API key is valid
+- Check rate limits and usage
+- Ensure target pages are accessible
+
+**Claude AI Analysis Failures**
+- Verify Anthropic API credentials
+- Check input data format
+- Review system prompt compatibility
+
+## 📈 Performance Considerations
+
+- **Batch Processing**: URLs are processed in batches to manage load
+- **Rate Limiting**: Built-in delays prevent overwhelming target servers
+- **Error Handling**: Continues processing even if individual URLs fail
+- **Dual Strategy**: Falls back from HEAD to GET requests when needed
+
+## 🤝 Contributing
+
+Contributions are welcome! Areas for improvement:
+- Additional SEO factors
+- Enhanced page type detection
+- Custom reporting formats
+- Integration with SEO tools
+- Performance optimizations
+
+## 📝 License
+
+This project is open source and available under the MIT License.
+
+## 🔗 Related Links
+
+- [n8n Documentation](https://docs.n8n.io/)
+- [Firecrawl API](https://firecrawl.dev/)
+- [Anthropic Claude](https://www.anthropic.com/)
+- [Google Search Essentials](https://developers.google.com/search/docs/essentials)
+
+## 📧 Support
+
+For questions or issues:
+- Open a GitHub issue
+- Email: dave@deepthinklabs.ai
+- n8n Workflow URL: https://deepthinklabs.app.n8n.cloud/workflow/4K11kIFyqo0Gxp6Y
+
+---
+
+**Built by [DeepThinkLabs.ai](https://deepthinklabs.ai) - AI-powered automation solutions**
