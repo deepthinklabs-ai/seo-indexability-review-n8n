@@ -33,7 +33,7 @@ Configure your email service (Gmail, SendGrid, etc.):
 ### Method 1: Direct Import
 1. Download the workflow file:
    ```bash
-   curl -O https://raw.githubusercontent.com/deepthinklabs-ai/seo-indexability-review-n8n/main/workflow-complete.json
+   curl -O https://raw.githubusercontent.com/deepthinklabs-ai/seo-indexability-review-n8n/main/seo_indexability_review_n8n.json
    ```
 
 2. In n8n:
