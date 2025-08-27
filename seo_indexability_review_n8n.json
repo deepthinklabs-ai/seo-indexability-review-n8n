@@ -1,0 +1,1242 @@
+{
+  "name": "SEO - Indexability Review",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ed173ad7-6ac1-4d27-a448-37597cb7957a",
+              "name": "site",
+              "value": "=INSERT_WEBSITE_URL_TO_REVIEW",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1424,
+        96
+      ],
+      "id": "b9086d7e-49c5-4439-84ce-e8648d86383c",
+      "name": "Init Site"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1648,
+        96
+      ],
+      "id": "75bc468e-15f8-4ed4-8ce9-2b76c93de453",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "={{ ($json.site || '').replace(/\\/+$/,'') + '/sitemap.xml' }}\n",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1200,
+        96
+      ],
+      "id": "c8672a2b-8d30-4269-97b0-25db4a9e47c2",
+      "name": "Fetch Sitemap",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Expect raw XML in $json.data or $json.body depending on your HTTP node\nconst xml = $json.data || $json.body || '';\n// Extract all <loc> values (handles namespaces and whitespace)\nconst locs = Array.from(xml.matchAll(/<loc[^>]*>\\s*([^<\\s][^<]*)\\s*<\\/loc>/gi))\n  .map(m => m[1].trim());\n\n// Emit each URL as its own item\nif (locs.length) {\n  return locs.map(u => ({ json: { url: u, source: 'sitemap' }}));\n}\n\n// If nothing found, emit a marker so we can trigger the fallback crawler later\nreturn [{ json: { url: null, source: 'sitemap', empty: true }}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        96
+      ],
+      "id": "edf5ad46-5c86-4470-b806-bf2f9c6c481e",
+      "name": "Parse Sitemap"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ensure we output one item per URL regardless of input shape.\n// Handles: \n// 1) items already like {json:{url:\"...\"}}  -> passthrough\n// 2) single item whose json is an array of {url: \"...\"}  -> expand\n// 3) single item with { urls: [\"...\",\"...\"] }           -> expand\n// 4) single item with { data: [ {url:\"...\"} ] }         -> expand\n\nconst out = [];\n\n// Case 2/3/4: one item wrapping an array\nif (items.length === 1) {\n  const j = items[0].json;\n\n  // e.g. { urls: [\"...\",\"...\"] }\n  if (Array.isArray(j?.urls)) {\n    for (const u of j.urls) {\n      if (typeof u === 'string' && u.trim()) out.push({ json: { url: u.trim() } });\n    }\n    return out.length ? out : [{ json: { warning: 'No urls in j.urls' } }];\n  }\n\n  // e.g. json is already an array of objects\n  if (Array.isArray(j)) {\n    for (const row of j) {\n      const u = row?.url ?? row?.loc ?? row?.href;\n      if (typeof u === 'string' && u.trim()) out.push({ json: { url: u.trim() } });\n    }\n    return out.length ? out : [{ json: { warning: 'Array had no url fields' } }];\n  }\n\n  // e.g. { data: [ {url:\"...\"} ] }\n  if (Array.isArray(j?.data)) {\n    for (const row of j.data) {\n      const u = row?.url ?? row?.loc ?? row?.href;\n      if (typeof u === 'string' && u.trim()) out.push({ json: { url: u.trim() } });\n    }\n    return out.length ? out : [{ json: { warning: 'No url fields in json.data' } }];\n  }\n}\n\n// Case 1: already many items with {json:{url}}\nfor (const it of items) {\n  const u = it?.json?.url ?? it?.json?.loc ?? it?.json?.href;\n  if (typeof u === 'string' && u.trim()) out.push({ json: { url: u.trim() } });\n}\n\nreturn out.length ? out : [{ json: { warning: 'No URL fields found to expand' } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        96
+      ],
+      "id": "37822868-28c2-430b-b3a4-89355557766d",
+      "name": "Expand URLs (If Grouped)"
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{$json.url}}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -304,
+        176
+      ],
+      "id": "39b73041-2d9a-47fb-bb72-06b37317e79d",
+      "name": "Fetch Page (raw)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "scrape",
+        "url": "={{$json.url}}",
+        "scrapeOptions": {
+          "options": {
+            "formats": [
+              "markdown",
+              "html"
+            ],
+            "headers": {},
+            "waitFor": 4000,
+            "mobile": true,
+            "skipTlsVerification": true,
+            "timeout": 90000
+          }
+        },
+        "requestOptions": {}
+      },
+      "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -192
+      ],
+      "id": "2fc0b406-50c9-4ab7-a5c3-6709ca0a948b",
+      "name": "Render Page (SPA)",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "firecrawlApi": {
+          "id": "nht88FAgSiQOipXN",
+          "name": "Firecrawl account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        144,
+        -128
+      ],
+      "id": "850c709d-2641-4e32-9c64-0e4e5a2eab33",
+      "name": "Split URLs"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        -128
+      ],
+      "id": "3812ea3f-8886-4416-896c-70e81919eb62",
+      "name": "Wait",
+      "webhookId": "4d943a00-cb9f-4ee3-af8f-fc168b852e5f"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -528,
+        240
+      ],
+      "id": "0b414bac-5ac9-4a42-8fa0-a9e5db7b08eb",
+      "name": "Split URLs1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        240
+      ],
+      "id": "e75878d4-202d-4c1b-b8ac-5b6a22a8b5bb",
+      "name": "Wait1",
+      "webhookId": "4d943a00-cb9f-4ee3-af8f-fc168b852e5f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9ca50bb4-a782-4e9a-a7b4-9ab467d3275d",
+              "leftValue": "={{ $json.statusCode === 405 || !!$json.error }}\n }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        176
+      ],
+      "id": "7447fda2-c0eb-45ac-b3ab-f2564ca40d34",
+      "name": "IF Head Unsupported"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7ff4deaf-a60c-4634-91b6-70cbfb4b332f",
+              "name": "raw_status",
+              "value": "={{$json.statusCode}}",
+              "type": "string"
+            },
+            {
+              "id": "9a7fa012-98de-4304-ba08-e3fe7b9849f5",
+              "name": "raw_content_type",
+              "value": "={{$json.headers?.[\"content-type\"] || \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "06e21346-fc93-4bc5-b85c-63df5a7c68ac",
+              "name": "raw_cache_control",
+              "value": "={{$json.headers?.[\"cache-control\"] || \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "3d210d6f-348c-424c-bd77-61ab28962e60",
+              "name": "raw_x_robots",
+              "value": "={{$json.headers?.[\"x-robots-tag\"] || \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "aced6c63-70a7-4e26-bca8-e95e707bdd19",
+              "name": "raw_server",
+              "value": "={{$json.headers?.[\"server\"] || \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "114fc53d-fced-4f68-a2a5-acb41d77ef4b",
+              "name": "redirect_location",
+              "value": "={{$json.headers?.[\"location\"] || \"\"}}",
+              "type": "string"
+            },
+            {
+              "id": "979ab929-08eb-4e18-bb69-8322eafa8aab",
+              "name": "url_in",
+              "value": "={{ $('Split URLs1').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "d3ddd47e-7887-4ec5-9528-5aeac40544b3",
+              "name": "raw_link",
+              "value": "={{$json.headers?.['link'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "7430d979-ee91-4767-8700-e94b50e71cc6",
+              "name": "raw_vary",
+              "value": "={{$json.headers?.['vary'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "fa77c42d-8d45-4aee-a65e-0a4be953d18f",
+              "name": "raw_content_encoding",
+              "value": "={{$json.headers?.['content-encoding'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "6e6ed7ad-0763-4ec1-9af6-a28642da739d",
+              "name": "raw_last_modified",
+              "value": "={{$json.headers?.['last-modified'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "8affb666-6727-482a-9915-a762c8b4ec07",
+              "name": "raw_etag",
+              "value": "={{$json.headers?.['etag'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "6add3be5-de32-4ff8-a3db-0b3316b49cdf",
+              "name": "raw_cache_status",
+              "value": "={{$json.headers?.['cf-cache-status'] || $json.headers?.['x-cache'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "317488f7-e6fb-4dcb-a885-178853a148b4",
+              "name": "raw_content_length",
+              "value": "={{$json.headers?.['content-length'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "da9a85cb-77b6-4550-9169-8e54e606bb4f",
+              "name": "raw_age",
+              "value": "={{$json.headers?.['age'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "52a5d0bf-de4f-449a-8d9f-340c69e436ec",
+              "name": "raw_date",
+              "value": "={{$json.headers?.['date'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "1b33ffca-092f-47a1-a8db-db09f4920679",
+              "name": "sec_hsts",
+              "value": "={{$json.headers?.['strict-transport-security'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "54141e04-8a15-415e-a19f-8f9267db1529",
+              "name": "sec_csp",
+              "value": "={{$json.headers?.['content-security-policy'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "d16adfac-7668-4953-987c-288771b8a8f9",
+              "name": "sec_xcto",
+              "value": "={{$json.headers?.['x-content-type-options'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "96348a83-296c-43c4-85bb-03e510329d49",
+              "name": "sec_xfo",
+              "value": "={{$json.headers?.['x-frame-options'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "6bfae9fe-6550-49c2-9131-55166a7d33a1",
+              "name": "sec_referrer",
+              "value": "={{$json.headers?.['referrer-policy'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "70c14278-e2a7-4b91-bf1f-5a04b7326d2f",
+              "name": "sec_permissions",
+              "value": "={{$json.headers?.['permissions-policy'] || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "010c49db-2598-42be-a4b7-034297f74a8b",
+              "name": "is_redirect",
+              "value": "={{ (Number($json.statusCode) >= 300 && Number($json.statusCode) < 400) || !!$json.headers?.['location'] }}",
+              "type": "string"
+            },
+            {
+              "id": "e2730351-4ed3-45b6-b689-dda853f8b582",
+              "name": "is_cacheable",
+              "value": "={{ String($json.headers?.['cache-control'] || '').toLowerCase().includes('max-age') && !String($json.headers?.['cache-control'] || '').toLowerCase().includes('no-store') }}",
+              "type": "string"
+            },
+            {
+              "id": "f422ed25-895a-466a-8b9f-0f7635d6a3a8",
+              "name": "is_compressed",
+              "value": "={{ /(br|gzip|zstd)/.test(String($json.headers?.['content-encoding'] || '').toLowerCase()) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        176
+      ],
+      "id": "757b0598-216b-4d84-97e7-e20603e82b0c",
+      "name": "Raw Clean"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Split URLs1').item.json.url }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        144,
+        240
+      ],
+      "id": "9d2328e6-d8b5-4d38-81ab-fd29fe39e58d",
+      "name": "Raw Get Fallback",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json) }}\n",
+        "options": {
+          "systemMessage": "You are an expert Technical SEO indexability auditor (2025).\n\nYou will receive ONE user message containing a single JSON object with fields like:\nsource_url, final_url, http_status, content_type, is_html, is_redirect, robots_meta, x_robots_tag, has_noindex, canonical_from_header, canonical_html, canonical_effective, hreflangs[], html_lang, server, cache_control, hsts, csp, h1, path.\n\nGOAL\nDecide indexability for THIS URL and return ONE minified, single-line JSON object with:\n- page_url (ALWAYS include it; derive as final_url || source_url || path || \"\")\n- 0–100 score\n- findings with severities\n- prioritized recommendations (P0/P1/P2)\n- references\nUse ONLY the provided fields. No prose, no Markdown.\n\nRULES (priority order)\n1) HTTP status & redirects: non-200 or any 3xx => not indexable for this URL.\n2) Content-Type must include \"text/html\". Otherwise => not indexable.\n3) Robots: any \"noindex\" in meta or X-Robots => not indexable.\n4) Page-type heuristics (use path and h1):\n   - If path or h1 indicates login|auth|account|cart|checkout|search|\\\\?replytocom|pagination params, recommend noindex. For login/auth/account/cart/checkout specifically, verdict = non-indexable unless an explicit \"index\" directive is present.\n5) Canonical: prefer HTTP Link rel=canonical over HTML; detect conflicts, multiples, or missing canonical.\n6) Hreflang & html lang: advisory; flag misconfigs but do not block indexability.\n7) Caching/security headers: advisory only.\n\nSCORING (start 100, clamp 0–100)\n- Non-200 or redirect: −70 (set verdict non-indexable)\n- Non-HTML: −40 (set verdict non-indexable)\n- Any noindex (meta or header): −100 (set verdict non-indexable)\n- Page-type should be noindex (login/auth/account/cart/checkout/search): −40 and set verdict to \"non-indexable\" unless robots explicitly says index.\n- Canonical conflict: −20; cross-domain unclear: −25; missing canonical: −8; multiple canonicals: −15\n- Hreflang issues: −5 each (cap −15); missing html_lang: −2; nofollow-only: −5\n- Duplicate/contradictory robots directives (e.g., repeated \"index, follow\"): −3\n\nOUTPUT FORMAT (STRICT single-line JSON only; no extra keys, no pretty print):\n{\n  \"page_url\":\"<final_url || source_url || path || ''>\",\n  \"score\":<int>,\n  \"indexable\":true|false,\n  \"verdict\":\"indexable|non-indexable|conditionally-indexable\",\n  \"page_type\":\"standard|login|account|cart|checkout|search|pagination|unknown\",\n  \"canonical_verdict\":{\"effective\":\"<url-or-empty>\",\"source\":\"header|html|none\",\"conflict\":true|false,\"issues\":[\"...\"]},\n  \"robots\":{\"meta\":\"<string>\",\"x_robots\":\"<string>\",\"has_noindex\":true|false},\n  \"http\":{\"status\":<int>,\"content_type\":\"<string>\",\"is_html\":true|false,\"is_redirect\":true|false},\n  \"hreflang\":{\"count\":<int>,\"lang\":\"<html_lang-or-empty>\",\"issues\":[\"...\"]},\n  \"findings\":[{\"id\":\"...\",\"severity\":\"high|medium|low\",\"detail\":\"...\"}],\n  \"recommendations\":[{\"action\":\"...\",\"priority\":\"P0|P1|P2\",\"rationale\":\"...\"}],\n  \"references\":[\"Google Search Essentials - Robots tags\",\"Canonical link best practices\",\"Page indexing guidelines\"]\n}\n\nINSTRUCTIONS\n- Always populate \"page_url\" (use final_url first, else source_url, else path, else \"\").\n- Determine page_type from path/h1. If login/auth/account/cart/checkout/search, set page_type and recommend noindex (P0 or P1).\n- canonical_verdict.effective = canonical_from_header || canonical_html || canonical_effective || \"\".\n- Be concise and actionable. Do NOT output anything except the single JSON line.\n\n\n"
+        }
+      },
+      "id": "8e5aac97-877b-4d5b-acd7-59856f49bc65",
+      "name": "Indexability Review Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1488,
+        96
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "145b78e1-045c-4a99-abce-de6a85973810",
+              "name": "source_url",
+              "value": "={{ $json.source_url }}",
+              "type": "string"
+            },
+            {
+              "id": "bff3fbfd-825b-45eb-91f7-22d07a7cfb87",
+              "name": "final_url",
+              "value": "={{ $json.final_url }}",
+              "type": "string"
+            },
+            {
+              "id": "4f0fa589-460c-48a5-8bd6-0b0c220ddb82",
+              "name": "http_status",
+              "value": "={{ $json.http_status }}",
+              "type": "number"
+            },
+            {
+              "id": "a03888b8-9825-43c6-af4c-bee82de62744",
+              "name": "content_type",
+              "value": "={{ $json.content_type }}",
+              "type": "string"
+            },
+            {
+              "id": "d8c2c06b-6a63-4554-8aa9-d336c2c11c2b",
+              "name": "robots_meta",
+              "value": "={{ $json.robots_meta }}",
+              "type": "string"
+            },
+            {
+              "id": "a77bb2c0-3cc1-4604-ae82-2f202568b422",
+              "name": "x_robots_tag",
+              "value": "={{ $json.x_robots_tag }}",
+              "type": "string"
+            },
+            {
+              "id": "116fc3d2-503d-4b50-8d47-29990168d570",
+              "name": "has_noindex",
+              "value": "={{ $json.has_noindex }}",
+              "type": "boolean"
+            },
+            {
+              "id": "619b6c9f-f64c-4d1a-8d5f-ffc8e6f7eaa9",
+              "name": "is_html",
+              "value": "={{ $json.is_html }}",
+              "type": "boolean"
+            },
+            {
+              "id": "b7e183d0-aa9c-456c-958e-17747de2f0e5",
+              "name": "is_redirect",
+              "value": "={{ $json.is_redirect }}",
+              "type": "boolean"
+            },
+            {
+              "id": "2f8be27e-8262-45f4-82a7-8b4dedb69f10",
+              "name": "canonical_from_header",
+              "value": "={{ $json.canonical_from_header }}",
+              "type": "string"
+            },
+            {
+              "id": "b2e61980-0480-4c7b-8506-f9fd3853d4b7",
+              "name": "canonical_html",
+              "value": "={{ $json.canonical_html }}",
+              "type": "string"
+            },
+            {
+              "id": "292a3547-4be4-4249-95e5-dc551fbcd6d5",
+              "name": "canonical_effective",
+              "value": "={{ $json.canonical_effective }}",
+              "type": "string"
+            },
+            {
+              "id": "1579b8de-7218-47f0-a36d-1178b6afd717",
+              "name": "hreflangs",
+              "value": "={{ $json.hreflangs }}",
+              "type": "array"
+            },
+            {
+              "id": "21fd4ef0-34f8-47a4-9be9-46908e9b6194",
+              "name": "html_lang",
+              "value": "={{ $json.html_lang }}",
+              "type": "string"
+            },
+            {
+              "id": "2a7eb410-744f-478d-beff-43147fe22d72",
+              "name": "server",
+              "value": "={{ $json.server }}",
+              "type": "string"
+            },
+            {
+              "id": "e49d58e3-0440-46f8-9349-cf132195ff49",
+              "name": "cache_control",
+              "value": "={{ $json.cache_control }}",
+              "type": "string"
+            },
+            {
+              "id": "f0afdeb7-7d78-4133-9e06-22db91c41eaf",
+              "name": "hsts",
+              "value": "={{ $json.hsts }}",
+              "type": "string"
+            },
+            {
+              "id": "d56caed6-b56c-4fca-9faf-649abba03d55",
+              "name": "csp",
+              "value": "={{ $json.csp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1264,
+        96
+      ],
+      "id": "1dec89b6-c3bf-4ca6-8893-6fd4cadad93b",
+      "name": "Set for Indexability Review Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-20250514",
+          "cachedResultName": "Claude 4 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        320
+      ],
+      "id": "e3feb248-a135-4595-a621-f8644944b85f",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "Cu7UhQCsQna6iUHz",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handles outputs like [{ output: \"{\\\"score\\\":60, ... }\" }]\n// and tries to also pull a URL from upstream if present.\nreturn items.map(item => {\n  // 1) Find upstream URL if available (adjust keys as needed in your flow)\n  const url =\n    item.json.final_url ??\n    item.json.page_url ??\n    item.json.source_url ??\n    item.json.url ??\n    '';\n\n  // 2) Pull raw payload (your agent stores it in item.json.output)\n  const raw = item.json.output ?? item.json;\n\n  // 3) Parse robustly (double-encoded JSON safe)\n  let data = raw;\n  try {\n    if (typeof data === 'string') data = JSON.parse(data);\n    if (typeof data === 'string') data = JSON.parse(data); // double parse if needed\n  } catch (e) {\n    data = { parse_error: e.message, raw };\n  }\n\n  // 4) Normalize keys with defaults\n  const score = data.score ?? null;\n  const indexable = data.indexable ?? null;\n  const verdict = data.verdict ?? (indexable === true ? 'indexable' : 'non-indexable');\n  const pageType = data.page_type ?? '';\n  const findings = Array.isArray(data.findings) ? data.findings : [];\n  const recs = Array.isArray(data.recommendations) ? data.recommendations : [];\n  const refs = Array.isArray(data.references) ? data.references : [];\n\n  // ✅ NEW: fallback to data.page_url if upstream \"url\" is empty\n  const resolvedPageUrl = url || data.page_url || '';\n\n  // (Optional) ✅ guard: warn if still empty (helps catch wiring issues)\n  // if (!resolvedPageUrl) throw new Error('Normalize Indexability Output: page_url is empty');\n\n  return {\n    json: {\n      page_url: resolvedPageUrl,   // ✅ now always preserved\n      category: 'Indexability',\n      score,\n      verdict,\n      indexable,\n      page_type: pageType,\n      findings,                    // [{id, severity, detail}]\n      recommendations: recs,       // [{action, priority(P0/P1/P2), rationale}]\n      references: refs,\n      robots: data.robots ?? {},\n      http: data.http ?? {},\n      canonical: data.canonical_verdict ?? {}\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        96
+      ],
+      "id": "2058e39d-337f-4e6d-b804-d86777ca6473",
+      "name": "Normalize Indexability Output"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-sonnet-4-20250514",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-20250514"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Use the data below to write the section. Do NOT include any raw JSON in your response.\n\nPage URL: {{ $json.page_url }}\nScore: {{ $json.score }}\nVerdict: {{ $json.verdict }} (indexable: {{ $json.indexable }})\nPage Type: {{ $json.page_type }}\n\nKey Findings:\n{{ $json.findings && $json.findings.length ? $json.findings.map(f => `- (${f.severity}) ${f.detail}`).join('\\n') : '- None reported' }}\n\nRecommendations:\n{{ $json.recommendations && $json.recommendations.length ? $json.recommendations.map(r => `- ${r.priority}: ${r.action} — ${r.rationale}`).join('\\n') : '- None reported' }}\n\nReferences:\n{{ $json.references && $json.references.length ? $json.references.join(', ') : '' }}\n"
+            }
+          ]
+        },
+        "options": {
+          "system": "You are an SEO Report Writer Agent (2025). You receive normalized indexability results for ONE page.\n\nWrite a concise, client-friendly section with:\n- A 2–3 sentence summary in plain English.\n- A prioritized fix list grouped by P0/P1/P2.\n- For each fix, include:\n  • Why it matters: 1 plain-English sentence.\n  • How to fix: 1–3 concrete steps (where to click / what to add).\n\nRules:\n- No JSON. Use bullets; keep it actionable and non-technical where possible.\n- If indexable=false, clearly say why and the fastest path to resolution.\n- Prefer short imperative steps (\"Add X\", \"Remove Y\").\n\nFormat exactly:\n1) Page: <URL>\n2) Score & Verdict: <score>/100 — <verdict>\n3) Summary:\n   <2–3 sentences>\n4) Priority Fixes:\n   - P0 (Critical):\n     - <Fix name> — <1‑line description>\n       • Why it matters: <1 line>\n       • How to fix: <step 1>; <step 2>; <step 3>\n   - P1 (High):\n     - ...\n   - P2 (Medium/Low):\n     - ...\n5) References consulted: <comma-separated>  // omit if none\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        176
+      ],
+      "id": "174ea4e1-f30d-4371-97a1-1a10386f8da2",
+      "name": "Report Writer - Indexability",
+      "credentials": {
+        "anthropicApi": {
+          "id": "Cu7UhQCsQna6iUHz",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "187cda46-3f2e-4c80-8db1-39d3db60bd80",
+              "name": "writer_text",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2416,
+        176
+      ],
+      "id": "5d83738c-2b5a-4b86-bb4c-c8261997cfa9",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2640,
+        96
+      ],
+      "id": "be7ec25b-b87f-4641-b652-677c0e5ff362",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "fromEmail": "INSERT_FROM_EMAIL_ADDRESS",
+        "toEmail": "INSERT_TO_EMAIL_ADDRESS",
+        "subject": "=SEO Report — Indexability — {{$json.page_url}} ({{$json.score}}/100)",
+        "html": "=<h2 style=\"margin:0 0 8px 0;\">Indexability Report</h2>\n\n<p style=\"margin:0 0 6px 0;\">\n  <strong>Page:</strong> <a href=\"{{$json.page_url}}\" target=\"_blank\">{{$json.page_url}}</a><br/>\n  <strong>Score &amp; Verdict:</strong> {{$json.score}}/100 — {{$json.verdict}} (indexable: {{$json.indexable}})\n</p>\n\n<h3 style=\"margin:12px 0 6px 0;\">Key Findings</h3>\n<ul style=\"margin:0 0 10px 20px; padding:0;\">\n  {{ $json.findings && $json.findings.length ? $json.findings.map(f => `<li><strong>${f.severity.toUpperCase()}</strong> — ${f.detail}</li>`).join('') : '<li>None reported</li>' }}\n</ul>\n\n<h3 style=\"margin:12px 0 6px 0;\">Priority Fixes</h3>\n<table cellpadding=\"6\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse; width:100%; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;\">\n  <thead>\n    <tr>\n      <th align=\"left\" style=\"border-bottom:1px solid #ddd;\">Priority</th>\n      <th align=\"left\" style=\"border-bottom:1px solid #ddd;\">Action</th>\n      <th align=\"left\" style=\"border-bottom:1px solid #ddd;\">Why it matters</th>\n    </tr>\n  </thead>\n  <tbody>\n    {{ $json.recommendations && $json.recommendations.length \n      ? $json.recommendations.map(r => `\n        <tr>\n          <td style=\"border-bottom:1px solid #f0f0f0;\"><strong>${r.priority}</strong></td>\n          <td style=\"border-bottom:1px solid #f0f0f0;\">${r.action}</td>\n          <td style=\"border-bottom:1px solid #f0f0f0;\">${r.rationale}</td>\n        </tr>`).join('')\n      : `<tr><td colspan=\"3\">No recommendations reported</td></tr>` }}\n  </tbody>\n</table>\n\n<h4 style=\"margin:14px 0 6px 0;\">References</h4>\n<p style=\"margin:0 0 10px 0;\">\n  {{ $json.references && $json.references.length ? $json.references.join(', ') : '—' }}\n</p>\n\n<hr style=\"border:none;border-top:1px solid #eee;margin:12px 0;\"/>\n\n<p style=\"color:#666;font-size:12px;margin-top:6px;\">\n  Category: {{$json.category}} • HTTP: {{$json.http.status}} ({{$json.http.content_type}})\n</p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2864,
+        96
+      ],
+      "id": "45a3bfc0-47bd-49c6-857f-b212296d1b12",
+      "name": "Send email",
+      "webhookId": "baa894cf-c65a-427a-af6f-74106aa082b8",
+      "credentials": {
+        "smtp": {
+          "id": "3KJnq7gQyvPNuZnu",
+          "name": "DTL Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4205bfbd-5959-4e31-8d8d-33a39387f5ba",
+              "name": "source_url",
+              "value": "={{ $json.data?.metadata?.url ?? $json.url_in ?? $json.data?.metadata?.sourceURL ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "0698caca-94c5-4a07-935c-7acaf75ad91a",
+              "name": "final_url",
+              "value": "={{ $json.redirect_location || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "22d92a3e-5a6e-4f66-9346-e779d30180cd",
+              "name": "http_status",
+              "value": "={{ Number($json.raw_status ?? $json.data?.metadata?.statusCode ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "fb245df7-4c7a-4806-a9d6-962912d099a5",
+              "name": "content_type",
+              "value": "={{ $json.raw_content_type ?? $json.data?.metadata?.contentType ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "66c61397-cb17-4f9e-b655-c931f43ea339",
+              "name": "x_robots_tag",
+              "value": "={{ $json.raw_x_robots ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "2671697a-073d-486f-b5b8-dd70072ff8b6",
+              "name": "cache_control",
+              "value": "={{ $json.raw_cache_control ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "03f512ce-2279-4da1-8b22-b7aef2d50186",
+              "name": "server",
+              "value": "={{ $json.raw_server ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "7f35791e-619b-4674-9e3d-3107625710ed",
+              "name": "title",
+              "value": "={{ $json.data?.metadata?.title ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "5274650c-bbc0-417a-9702-02de7238281c",
+              "name": "meta_description",
+              "value": "={{ $json.data?.metadata?.description ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "50c0c1c3-e764-45da-976f-f4346bfb437d",
+              "name": "robots_meta",
+              "value": "={{ Array.isArray($json.data?.metadata?.robots) ? $json.data.metadata.robots.join(\", \") : ($json.data?.metadata?.robots ?? \"\") }}",
+              "type": "string"
+            },
+            {
+              "id": "1d9950d2-87de-4f63-9da1-60c1dd916dde",
+              "name": "og_url",
+              "value": "={{ $json.data?.metadata?.ogUrl ?? $json.data?.metadata?.[\"og:url\"] ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "02a71957-5687-4480-96cc-786a9a62cc85",
+              "name": "markdown",
+              "value": "={{ $json.data?.markdown ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "99f8dfe8-8229-4743-89c2-07d32b8d1034",
+              "name": "html",
+              "value": "={{ $json.data?.html ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "e01ea0a8-7dfb-4359-891a-f658df244c51",
+              "name": "is_html",
+              "value": "={{ String($json.raw_content_type || \"\").toLowerCase().includes(\"text/html\") }}",
+              "type": "boolean"
+            },
+            {
+              "id": "e5419372-d9cd-4d97-9ce1-8cc491c14cbc",
+              "name": "has_noindex",
+              "value": "={{ String($json.raw_x_robots || \"\").toLowerCase().includes(\"noindex\") }}",
+              "type": "boolean"
+            },
+            {
+              "id": "c44665c2-69b9-423f-aeab-946b39648d67",
+              "name": "vary",
+              "value": "={{ $json.raw_vary ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "afa17b86-0710-4fe4-977a-2eafea0788cb",
+              "name": "content_encoding",
+              "value": "={{ $json.raw_content_encoding ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "0596aa1b-d7ba-4457-8d32-c9ec8015f7b6",
+              "name": "last_modified",
+              "value": "={{ $json.raw_last_modified ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "364438cd-fadb-4ad2-ab12-b598ae07bdab",
+              "name": "etag",
+              "value": "={{ $json.raw_etag ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "21f91c8d-bb18-44d5-bcba-cf017b6fcc3c",
+              "name": "cache_status",
+              "value": "={{ $json.raw_cache_status ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "c313a234-752a-47f9-9252-607a24eec92d",
+              "name": "content_length",
+              "value": "={{ $json.raw_content_length ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "260ed266-0069-4cb3-a7e8-1758608d5a09",
+              "name": "age",
+              "value": "={{ $json.raw_age ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "955efc89-7e2c-43b5-8f67-f9aa0debfae9",
+              "name": "date_header",
+              "value": "={{ $json.raw_date ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "e8c811f1-45c1-464e-8592-c60c05d4534c",
+              "name": "link_header",
+              "value": "={{ $json.raw_link ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "0be3c6ec-f162-42a0-9a65-84b9b97f4562",
+              "name": "hsts",
+              "value": "={{ $json.sec_hsts ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "ed84aabe-eb27-44ac-af27-d3a71f189c20",
+              "name": "csp",
+              "value": "={{ $json.sec_csp ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "be092904-859b-4825-a25d-259be3619a73",
+              "name": "x_content_type_options",
+              "value": "={{ $json.sec_xcto ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "16ab0af6-bdfb-455c-b562-f710f4fc54ce",
+              "name": "x_frame_options",
+              "value": "={{ $json.sec_xfo ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "6b186be7-6e27-4407-b5e0-e7785506257b",
+              "name": "referrer_policy",
+              "value": "={{ $json.sec_referrer ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "7aa770a5-1c60-4c9b-8e28-35a45ac7be04",
+              "name": "permissions_policy",
+              "value": "={{ $json.sec_permissions ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "23a58a7d-9d16-4431-9f30-5b03fff386a8",
+              "name": "is_redirect",
+              "value": "={{ (Number($json.raw_status)||0) >= 300 && (Number($json.raw_status)||0) < 400 || !!$json.redirect_location }}",
+              "type": "boolean"
+            },
+            {
+              "id": "bf426069-77b4-4cc3-8231-6bf8392a8a53",
+              "name": "is_cacheable",
+              "value": "={{ String($json.raw_cache_control || '').toLowerCase().includes('max-age') && !String($json.raw_cache_control || '').toLowerCase().includes('no-store') }}",
+              "type": "boolean"
+            },
+            {
+              "id": "03a65cf4-312b-4a9f-a1a5-6368dbe30aaa",
+              "name": "is_compressed",
+              "value": "={{ /(br|gzip|zstd)/.test(String($json.raw_content_encoding || '').toLowerCase()) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "e2f9352d-04ce-415c-9aab-58a104611a8f",
+              "name": "cache_ttl_s",
+              "value": "={{ Number(($json.raw_cache_control || '').match(/max-age=(\\d+)/)?.[1] || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "cf74c1d4-c940-4bfc-8f65-98238b655fdb",
+              "name": "canonical_from_header",
+              "value": "={{ ($json.raw_link || '').match(/<([^>]+)>;\\s*rel=\"?canonical\"?/i)?.[1] || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "38d4f88c-da26-48f2-84e5-fd75a8e63371",
+      "name": "Build Page Context"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        816,
+        96
+      ],
+      "id": "432809b6-f470-48a1-b846-746e32933dd6",
+      "name": "Join URL + Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Init Site": {
+      "main": [
+        [
+          {
+            "node": "Fetch Sitemap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Init Site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sitemap": {
+      "main": [
+        [
+          {
+            "node": "Parse Sitemap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Sitemap": {
+      "main": [
+        [
+          {
+            "node": "Expand URLs (If Grouped)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Page (raw)": {
+      "main": [
+        [
+          {
+            "node": "IF Head Unsupported",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Page (SPA)": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split URLs": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Render Page (SPA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Split URLs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Join URL + Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split URLs1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fetch Page (raw)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Split URLs1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Join URL + Response",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "IF Head Unsupported": {
+      "main": [
+        [
+          {
+            "node": "Raw Get Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Raw Clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raw Clean": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raw Get Fallback": {
+      "main": [
+        [
+          {
+            "node": "Raw Clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand URLs (If Grouped)": {
+      "main": [
+        [
+          {
+            "node": "Split URLs1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Indexability Review Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Indexability Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set for Indexability Review Agent": {
+      "main": [
+        [
+          {
+            "node": "Indexability Review Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Indexability Review Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Indexability Output": {
+      "main": [
+        [
+          {
+            "node": "Report Writer - Indexability",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Writer - Indexability": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join URL + Response": {
+      "main": [
+        [
+          {
+            "node": "Build Page Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Page Context": {
+      "main": [
+        [
+          {
+            "node": "Set for Indexability Review Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4f8769cb-d6ef-443c-9733-6cfc22b52f80",
+  "meta": {
+    "instanceId": "4dd9ef9c32b4c5c978d1872da1532fc15b09739127c117a29f6b4689b963430b"
+  },
+  "id": "4K11kIFyqo0Gxp6Y",
+  "tags": []
+}
