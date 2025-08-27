@@ -46,28 +46,30 @@ Configure your email service (Gmail, SendGrid, etc.):
 2. Search for "SEO Indexability Review"
 3. Click **Use this workflow**
 
-## Step 3: Configure Credentials
+## Step 3: Configure Credentials in n8n
 
 ### Firecrawl Credentials
-1. Go to **Credentials** → **Add Credential**
+1. In n8n, go to **Overview** → **Click Down Arrow Next to Create Workflow** → **Create Credential**
 2. Select **Firecrawl API**
-3. Enter your Firecrawl API key
-4. Save as "Firecrawl account"
+3. Base URL **https://api.firecrawl.dev/v1** (should be pre-populated)
+4. Enter your Firecrawl API key
+5. Save as "Firecrawl account"
 
 ### Anthropic Credentials
-1. Go to **Credentials** → **Add Credential**
-2. Select **Anthropic API**
+1. In n8n, go to **Overview** → **Click Down Arrow Next to Create Workflow** → **Create Credential**
+2. Select **Anthropic**
 3. Enter your Claude API key
-4. Save as "Anthropic account"
+4. Base URL **https://api.anthropic.com** (should be pre-populated)
+5. Save as "Anthropic account"
 
 ### SMTP Credentials
-1. Go to **Credentials** → **Add Credential**
+1. In n8n, go to **Overview** → **Click Down Arrow Next to Create Workflow** → **Create Credential**
 2. Select **SMTP**
 3. Configure your email settings:
    - **Host**: smtp.gmail.com (for Gmail)
-   - **Port**: 587
+   - **Port**: 465 (for Gmail - May be different depending on email provider)
    - **Username**: Your email address
-   - **Password**: Your app password
+   - **Password**: Your app password (you will need to setup an app password in Google Console for Gmail)
    - **Security**: STARTTLS
 4. Save as "Email SMTP"
 
