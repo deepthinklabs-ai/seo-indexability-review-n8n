@@ -12,18 +12,19 @@ This guide will help you set up the SEO Indexability Review workflow in your n8n
 
 ### Firecrawl API
 1. Visit [Firecrawl.dev](https://firecrawl.dev/)
-2. Sign up for an account
-3. Generate an API key from your dashboard
-4. Save the API key for later use
+2. Sign up for an account or login
+3. Go to **API Keys**
+4. Create an API Key 
+5. Save the API key for later use
 
 ### Anthropic Claude API
 1. Visit [Anthropic Console](https://console.anthropic.com/)
 2. Create an account or log in
-3. Generate an API key
+3. Go to **API Keys** then **Create Key**
 4. Save the API key for later use
 
 ### SMTP Credentials
-Configure your email service (Gmail, SendGrid, etc.):
+Configure your email service (Gmail, Outlook, etc.):
 - **Gmail**: Enable 2FA and create an App Password
 - **SendGrid**: Create an API key
 - **Other SMTP**: Get host, port, username, password
