@@ -87,9 +87,14 @@ See [INSTALL.md](INSTALL.md) for detailed setup instructions.
 
 ### Basic Execution
 1. Open the workflow in n8n
-2. Update the target website URL in the "Init Site" node
-3. Click "Execute workflow" to start the analysis
-4. The workflow will automatically:
+2. Set Firecrawl Credentials in Render Page (SPA) node
+3. Set Anthropic Credentials in Anthropic Chat Model connected to Indexability Review Agent node
+4. Set Anthropic Credentials in Report Writer - Indexability node
+5. Set SMTP Credentials in Send email node
+6. In the"Init Site" node, replace "INSERT_WEBSITE_URL_TO_REVIEW" with the website you want to review
+7. In the Send email node, replace the placeholders for To and From fields with actual email addresses.
+8. Click "Execute workflow" to start the analysis
+9. The workflow will automatically:
    - Fetch the sitemap
    - Analyze each URL for indexability
    - Generate AI-powered recommendations
